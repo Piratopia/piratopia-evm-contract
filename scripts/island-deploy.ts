@@ -11,12 +11,12 @@ async function main() {
 
     console.log("Deploying contracts with the account:", deployer.address);
 
-    const initialFee = hre.ethers.parseEther("0.01"); // 0.01 ETH as the check-in fee
-    const fundingAccount = process.env.FUNDING_ACCOUNT_ADDRESS as AddressLike; // Replace with your funding account address
+    const fundingAccount = process.env.FUNDING_ACCOUNT_ADDRESS as AddressLike;
+    const maxLevel = 3;
 
     // Deploy the contract
-    const factory = await hre.ethers.getContractFactory("DailyQuest");
-    const contract = await factory.deploy(fundingAccount, initialFee);
+    const factory = await hre.ethers.getContractFactory("Island");
+    const contract = await factory.deploy(fundingAccount, maxLevel);
     const response = await contract.waitForDeployment();
     const address = await response.getAddress()
 

@@ -4,14 +4,14 @@ pragma solidity >=0.8.2 <0.9.0;
 
 /**
  * @title DailyQuest
- * @custom:dev-run-script ./scripts/daily-quest-deploy.ts
+ * @custom:dev-run-script ./scripts/island-deploy.ts
  */
-contract DailyQuest {
+contract Island {
     address admin;
     address payable private fundingAccount;
-    uint256 checkinFee;
-
-    mapping(address => uint256) private lastCheckin;
+    mapping(uint256 => uint256) private feeConfigs;
+    mapping(address => uint256) private userLevels;
+    uint256 maxLevel;
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "permission_deny");
@@ -23,12 +23,12 @@ contract DailyQuest {
         _;
     }
 
-    event CheckinSuccess(address indexed user, uint256 timestamp);
+    event IslandUpgrade(address indexed user, uint256 level);
 
-    constructor(address payable _fundingAccount, uint256 _initialFee) {
+    constructor(address payable _fundingAccount, uint256 _maxLevel) {
         admin = msg.sender;
         fundingAccount = _fundingAccount;
-        checkinFee = _initialFee;
+        maxLevel = _maxLevel;
     }
 
     function getFundingAccount() external view onlyAdmin returns (address) {
@@ -49,24 +49,38 @@ contract DailyQuest {
         fundingAccount = _newFundingAccount;
     }
 
-    function getLastCheckin() public view returns (uint256) {
-        return lastCheckin[msg.sender];
+    function getLevelFee(uint256 _level) public view returns (uint256) {
+        return feeConfigs[_level];
     }
 
-    function setFee(uint256 _newFee) external onlyAdmin {
-        checkinFee = _newFee;
+    function getIslandLevel() public view returns (uint256) {
+        return userLevels[msg.sender];
     }
 
-    function checkin() external payable {
-        require(msg.value >= checkinFee, "insufficient_fund");
+    function setMaxLevel(uint256 _maxLevel) external onlyAdmin {
+        maxLevel = _maxLevel;
+    }
 
-        uint256 lastCheckinTime = lastCheckin[msg.sender];
+    function setLevelFee(uint256 _level, uint256 _fee) external onlyAdmin {
+        require(_level <= maxLevel, 'over_maximum_level');
 
-        require(block.timestamp >= lastCheckinTime + 1 days, "already_checkin");
+        feeConfigs[_level] = _fee;
+    }
 
-        lastCheckin[msg.sender] = block.timestamp;
+    function upgrade() external payable {
+        uint256 currentLevel = userLevels[msg.sender];
+        uint256 nextLevel = currentLevel + 1;
 
-        emit CheckinSuccess(msg.sender, block.timestamp);
+        require(nextLevel <= maxLevel, "exceed_maximum_level");
+
+        uint256 requiredFee = feeConfigs[nextLevel];
+
+        require(requiredFee > 0, "invalid_fee_level");
+        require(msg.value >= requiredFee, "insufficient_fund");
+
+        userLevels[msg.sender] = nextLevel;
+
+        emit IslandUpgrade(msg.sender, nextLevel);
     }
 
     function withdraw() external onlyFundingAccount {
