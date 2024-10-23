@@ -8,8 +8,8 @@ pragma solidity >=0.8.2 <0.9.0;
  */
 contract DailyQuest {
     address admin;
-    address payable private fundingAccount;
-    uint256 checkinFee;
+    address payable public fundingAccount;
+    uint256 public checkinFee;
 
     mapping(address => uint256) private lastCheckin;
 
@@ -31,10 +31,6 @@ contract DailyQuest {
         checkinFee = _initialFee;
     }
 
-    function getFundingAccount() external view onlyAdmin returns (address) {
-        return fundingAccount;
-    }
-
     function updateAdmin(address _newAdmin) external onlyAdmin {
         require(_newAdmin != address(0), "invalid_address");
         require(_newAdmin != admin, "already_admin");
@@ -42,7 +38,7 @@ contract DailyQuest {
         admin = _newAdmin;
     }
 
-    function updateFundingAccount(address payable _newFundingAccount) external onlyFundingAccount {
+    function updateFundingAccount(address payable _newFundingAccount) external onlyAdmin {
         require(_newFundingAccount != address(0), "invalid_address");
         require(_newFundingAccount != admin, "already_funding_account");
 
@@ -69,11 +65,13 @@ contract DailyQuest {
         emit CheckinSuccess(msg.sender, block.timestamp);
     }
 
-    function withdraw() external onlyFundingAccount {
+    function withdraw() external onlyFundingAccount payable {
         uint256 balance = address(this).balance;
 
         require(balance > 0, "no_fund_to_transfer");
 
-        fundingAccount.transfer(address(this).balance);
+        (bool sent, ) = fundingAccount.call{value: balance}("");
+
+        require(sent, "withdraw_failed");
     }
 }

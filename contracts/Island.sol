@@ -8,10 +8,11 @@ pragma solidity >=0.8.2 <0.9.0;
  */
 contract Island {
     address admin;
-    address payable private fundingAccount;
+    address payable public fundingAccount;
+    uint256 public maxLevel;
+
     mapping(uint256 => uint256) private feeConfigs;
     mapping(address => uint256) private userLevels;
-    uint256 maxLevel;
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "permission_deny");
@@ -31,10 +32,6 @@ contract Island {
         maxLevel = _maxLevel;
     }
 
-    function getFundingAccount() external view onlyAdmin returns (address) {
-        return fundingAccount;
-    }
-
     function updateAdmin(address _newAdmin) external onlyAdmin {
         require(_newAdmin != address(0), "invalid_address");
         require(_newAdmin != admin, "already_admin");
@@ -42,7 +39,7 @@ contract Island {
         admin = _newAdmin;
     }
 
-    function updateFundingAccount(address payable _newFundingAccount) external onlyFundingAccount {
+    function updateFundingAccount(address payable _newFundingAccount) external onlyAdmin {
         require(_newFundingAccount != address(0), "invalid_address");
         require(_newFundingAccount != admin, "already_funding_account");
 
@@ -83,11 +80,13 @@ contract Island {
         emit IslandUpgrade(msg.sender, nextLevel);
     }
 
-    function withdraw() external onlyFundingAccount {
+    function withdraw() external onlyFundingAccount payable {
         uint256 balance = address(this).balance;
 
         require(balance > 0, "no_fund_to_transfer");
 
-        fundingAccount.transfer(address(this).balance);
+        (bool sent, ) = fundingAccount.call{value: balance}("");
+
+        require(sent, "withdraw_failed");
     }
 }
